@@ -2,40 +2,67 @@ import { useEffect, useState } from "react";
 import createDeck from "./functions/createDeck";
 import "./App.css";
 
+function Card(props) {
+  const { card, index } = props;
+
+  return (
+    <div
+      className="flex border p-4 rounded-xl w-[100px] h-[150px] justify-between flex-col"
+      key={index}
+    >
+      <div className="self-start flex-col flex">
+        <span>{card.value}</span>
+      </div>
+      <div>{card.suit}</div>
+      <div className="self-end flex-col flex">
+        <span>{card.value}</span>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [deck, setDeck] = useState(createDeck());
-  const [userCards, setUserCards] = useState([]);
-  const [computerCards, setComputerCards] = useState([]);
+  const [userCards, setUserCards] = useState({ cards: [], score: 0, numAces: 0 });
+  const [computerCards, setComputerCards] = useState({ cards: [], score: 0, numAces: 0 });
   const [userName, setUserName] = useState("Joshua");
   const [roundActive, setRoundActive] = useState(false);
   const [userHold, setUserHold] = useState(false);
   const [winner, setWinner] = useState("");
   const [activePlayer, setActivePlayer] = useState("");
 
-  const computerScore = assessCards(computerCards);
-  const userScore = assessCards(userCards);
+  let computerScore = assessCards(computerCards);
+  let userScore = assessCards(userCards);
 
-  const [uScore, setUscore] = useState(0);
-  const [compScore, setCompScore] = useState(0);
-
+  // function recheckScores() {
+  //   computerScore = assessCards(computerCards);
+  //   userScore = assessCards(userCards);
+  // }
 
   function initialDealCards() {
     const userCard1 = deck.pop();
     const computerCard1 = deck.pop();
     const userCard2 = deck.pop();
-
-    setUserCards([userCard1, userCard2]);
-    setComputerCards([computerCard1]);
+  
+    setUserCards({
+      cards: [userCard1, userCard2]
+    });
+    setComputerCards({
+      cards: [computerCard1]
+    });
     setDeck(deck);
   }
+  
 
-  function assessCards(player) {
+  function assessCards(cards) {
     let score = 0;
-
-    for (let card of player) {
+    let numAces = 0;
+  
+    for (let card of cards.cards) {
       switch (card.value) {
         case "ace":
-          score += score < 11 ? 11 : 1;
+          numAces++;
+          score += 11;
           break;
         case "king":
         case "queen":
@@ -46,13 +73,21 @@ function App() {
           score += parseInt(card.value);
       }
     }
-
-    return score;
+  
+    while (score > 21 && numAces > 0) {
+      score -= 10;
+      numAces--;
+    }
+  
+    return { score, numAces };
   }
+  
 
   function drawAnotherCard() {
     const newUserCard = deck.pop();
-    setUserCards((prev) => [...prev, newUserCard]);
+    const newUserCards = [...userCards.cards, newUserCard];
+    const { score, numAces } = assessCards(newUserCards);
+    setUserCards({ cards: newUserCards, score, numAces });
     setDeck(deck);
     dealerDraw();
     setActivePlayer("dealer");
@@ -60,7 +95,9 @@ function App() {
 
   function dealerDraw() {
     const newDealerCard = deck.pop();
-    setComputerCards((prev) => [...prev, newDealerCard]);
+    const newDealerCards = [...computerCards.cards, newDealerCard];
+    const { score, numAces } = assessCards(newDealerCards);
+    setComputerCards({ cards: newDealerCards, score, numAces });
     setDeck(deck);
     setActivePlayer("user");
   }
@@ -139,6 +176,10 @@ function App() {
     if (userHold && computerScore >= 17) {
       disableGame();
     }
+
+    if (computerScore >= 17) {
+      disableGame();
+    }
   }, [userHold, computerScore]);
 
   useEffect(() => {
@@ -171,25 +212,12 @@ function App() {
       <div id="user">
         <h2 className="text-2xl">{userName}</h2>
 
-        {userCards.length <= 0 && <span>No cards.</span>}
+        {userCards.cards.length <= 0 && <span>No cards.</span>}
 
         <div className="flex flex-wrap self-center gap-2 justify-center">
-          {userCards.map((card, index) => {
+          {userCards.cards.map((card, index) => {
             return (
-              <div
-                className="flex border p-4 rounded-xl w-[100px] h-[150px] justify-between flex-col"
-                key={index}
-              >
-                <div className="self-start flex-col flex">
-                  <span>{card.value}</span>
-                  {/* {card.suit} */}
-                </div>
-                <div>{card.suit}</div>
-                <div className="self-end flex-col flex">
-                  <span>{card.value}</span>
-                  {/* {card.suit} */}
-                </div>
-              </div>
+              <Card card={card} index={index} />
             );
           })}
         </div>
@@ -198,24 +226,11 @@ function App() {
       <div id="computer">
         <h2 className="text-2xl">Dealer</h2>
 
-        {computerCards.length <= 0 && <span>No cards.</span>}
+        {computerCards.cards.length <= 0 && <span>No cards.</span>}
         <div className="flex flex-wrap self-center gap-2 justify-center">
-          {computerCards.map((card, index) => {
+          {computerCards.cards.map((card, index) => {
             return (
-              <div
-                className="flex border p-4 rounded-xl w-[100px] h-[150px] justify-between flex-col"
-                key={index}
-              >
-                <div className="self-start flex-col flex">
-                  <span>{card.value}</span>
-                  {/* {card.suit} */}
-                </div>
-                <div>{card.suit}</div>
-                <div className="self-end flex-col flex">
-                  <span>{card.value}</span>
-                  {/* {card.suit} */}
-                </div>
-              </div>
+              <Card card={card} index={index} />
             );
           })}
         </div>
@@ -230,7 +245,7 @@ function App() {
         </button>
 
         <button
-          className={userCards.length > 0 && "hidden"}
+          className={userCards.cards.length > 0 && "hidden"}
           onClick={initializeGame}
         >
           Deal
